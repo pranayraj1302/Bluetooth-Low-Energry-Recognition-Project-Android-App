@@ -1,9 +1,12 @@
-package com.example.bleapplication
+package com.pranay.bleapplication
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
@@ -49,24 +52,24 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
-import com.example.bleapplication.ui.theme.BLEApplicationTheme
+import com.pranay.bleapplication.ui.theme.BLEApplicationTheme
 import android.os.Parcelable
-import androidx.activity.viewModels
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.*
+
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import kotlinx.parcelize.Parceler
 import kotlinx.parcelize.Parcelize
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.map
 
 @Suppress("unused")
 class BluetoothViewModel : ViewModel(){
@@ -80,7 +83,8 @@ class BluetoothViewModel : ViewModel(){
 @Parcelize
 data class Device(
     val name: String?,
-    val address: String?
+    val address: String?,
+    var connected: Boolean = false
 ) : Parcelable {
     constructor(parcel: Parcel) : this(
         parcel.readString(),
@@ -111,6 +115,7 @@ class MainActivity : ComponentActivity() {
         private const val REQUEST_LOCATION_PERMISSION = 1
         private const val REQUEST_BLUETOOTH_PERMISSIONS = 2
         private const val REQUEST_ENABLE_BLUETOOTH = 3
+        private const val REQUEST_BLUETOOTH_CONNECT = 4
         private const val TAG = "MainActivity"
         private const val SCAN_PERIOD: Long = 10000 // 10 seconds
     }
@@ -136,7 +141,11 @@ class MainActivity : ComponentActivity() {
                         Greeting(name = "Pranay", navController = navController)
                     }
                     composable(Screen.ScanResults.route) {
-                        devices.value?.let { it1 -> ScanResultsScreen(navController = navController, devices = it1) }
+                        devices.value?.let { it1 ->
+                            ScanResultsScreen(navController = navController, devices = it1, onConnect = {device ->
+                                connectToDevice(device)
+                            })
+                        }
                     }
                 }
             }
@@ -542,51 +551,181 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun ScanResultsScreen(navController: NavController, devices: List<Device> = emptyList()) {
-        val devicesList = remember { mutableStateListOf<Device>() }
-        //error : the remember delegate cannot be used with a type variable T.
-
-        LaunchedEffect(key1 = devices){
-            devicesList.clear()
-            devicesList.addAll(devices)
-        }
-
-
-        Surface(modifier = Modifier.fillMaxSize()) {
-            Column {
-                Text(text = "Scanned Devices ", modifier = Modifier.padding(10.dp))
-
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(devicesList) { device ->
-                        DeviceItem(device = device) //DeviceItem is a Composable function for displaying individual device information.
-                    }
+    fun ScanResultsScreen(
+        navController: NavController,
+        devices: List<Device>,
+        onConnect: (Device) -> Unit
+    ) {
+        Column {
+            Text(
+                text = "Scan results",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(16.dp)
+            )
+            LazyColumn {
+                items(devices.filter { it.name == "Coolzen" }) { device ->
+                    DeviceItem(device = device, onConnect = onConnect)
                 }
             }
         }
     }
 
     @Composable
-    fun DeviceItem(device: Device){
+    fun DeviceItem(device: Device, onConnect: (Device)-> Unit){
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .clickable { onConnect(device) },
+            verticalAlignment = Alignment.CenterVertically
+        ){
+            Column(modifier = Modifier.padding(8.dp)) {
+                Text(text = device.name ?: "Unknown Device")
+                Text(text = device.address ?: "Unknown Address")
+            }
+            Button(
+                onClick = { onConnect(device) },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (device.connected) Color.Green else MaterialTheme.colorScheme.secondary
+                )
+            ) {
+                Text(if (device.connected) "Connected" else "Connect")
+            }
+        }
+    }
 
-        Column(modifier = Modifier.padding(8.dp)) {
-            Text(text = "Device Name: ${device.name ?: "Unknown Device"}")
-            Text(text = "MAC Address: ${device.address ?: "00:01:02:03:04:05"}")
+    private fun connectToDevice(device: Device){
+        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ){
+            // Request necessary permissions from the user
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.BLUETOOTH_CONNECT),
+                REQUEST_BLUETOOTH_CONNECT
+            )
+            return
+        }
+
+        val bluetoothDevice = bluetoothAdapter?.getRemoteDevice(device.address)
+
+        if(device.connected){
+            // Disconnect from the device
+            bluetoothDevice?.connectGatt(this, false, object : BluetoothGattCallback(){
+                override fun onConnectionStateChange(
+                    gatt: BluetoothGatt?,
+                    status: Int,
+                    newState: Int
+                ) {
+                    super.onConnectionStateChange(gatt, status, newState)
+                    if(newState == BluetoothProfile.STATE_DISCONNECTED){
+                        Log.i(TAG, "Disconnected from GATT server")
+                        runOnUiThread{
+                            device.connected = false
+                            _devices.postValue(_devices.value)
+                        }
+                    }
+                }
+            })?.disconnect()
+        } else {
+            // Connect to the device
+            bluetoothDevice?.connectGatt(this, false, object : BluetoothGattCallback(){
+                override fun onConnectionStateChange(
+                    gatt: BluetoothGatt?,
+                    status: Int,
+                    newState: Int
+                ) {
+                    super.onConnectionStateChange(gatt, status, newState)
+                    when(newState){
+                        BluetoothProfile.STATE_CONNECTED -> {
+                            Log.i(TAG, "Connected to GATT server")
+                            runOnUiThread {
+                                device.connected = true
+                                _devices.postValue(_devices.value)
+                            }
+                        }
+                        BluetoothProfile.STATE_DISCONNECTED ->{
+                            Log.i(TAG, "Disconnected from GATT server")
+                            runOnUiThread {
+                                device.connected = false
+                                _devices.postValue(_devices.value)
+                            }
+                        }
+                    }
+                }
+
+                override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
+                    super.onServicesDiscovered(gatt, status)
+                    if(status == BluetoothGatt.GATT_SUCCESS){
+                        Log.i(TAG, "Services Discovered")
+                    } else{
+                        Log.w(TAG, "onServiceDiscovered received: $status")
+                    }
+                }
+            })
+        }
+
+
+        //bluetoothDevice?.connectGatt(this, false, gattCallback)
+        //} catch (e: SecurityException){
+        //Log.e(TAG, "SecurityException: Permission not granted", e)
+        //}
+    }
+
+    fun onRequestPermissionResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray){
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if(requestCode == REQUEST_BLUETOOTH_CONNECT && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+            // Handle permission granted
+            Log.d(TAG, "Bluetooth connect permission granted")
+            // Proceed with connecting to the device or any other action
+        } else {
+            Log.w(TAG, "Bluetooth connect permission not granted")
+        }
+    }
+
+    private val gattCallback = object : BluetoothGattCallback(){
+        override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
+            super.onConnectionStateChange(gatt, status, newState)
+            when(newState){
+                BluetoothProfile.STATE_CONNECTED -> {
+                    Log.i(TAG, "Connected to GATT server")
+                    // Check if Bluetooth connect permission is granted
+                    if(ActivityCompat.checkSelfPermission(this@MainActivity, Manifest.permission.BLUETOOTH_CONNECT)!= PackageManager.PERMISSION_GRANTED){
+                        Log.e(TAG, "Bluetooth connect permission not granted")
+                        return
+                    }
+                    gatt?.discoverServices()
+                }
+                BluetoothProfile.STATE_DISCONNECTED -> {
+                    Log.i(TAG, "Disconnected from GATT server")
+                }
+            }
+        }
+
+        override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
+            super.onServicesDiscovered(gatt, status)
+            if(status == BluetoothGatt.GATT_SUCCESS){
+                Log.i(TAG, "Services Discovered")
+            } else {
+                Log.w(TAG, "OnServicesDiscovered received: $status")
+            }
         }
     }
 
 
 
-    private fun updateUI(devices: List<String>){
-        _devices.value = devices.map { device ->
+    private fun updateUI(devices: List<String>) {
+        val coolzenDevices = devices.filter { device ->
+            val (name, _) = device.split(" - ")
+            name == "Coolzen"
+        }.map { device ->
             val (name, address) = device.split(" - ")
             Device(name, address)
         }
-        navController.navigate(Screen.ScanResults.route)
+
+        Log.d(TAG, "Coolzen Devices found: $coolzenDevices")
+
+        _devices.value = coolzenDevices
     }
 }
-
-
-
 
 
 
@@ -594,6 +733,3 @@ sealed class Screen(val route: String) {
     data object Home : Screen("home")
     data object ScanResults : Screen("scan_results")
 }
-
-
-
