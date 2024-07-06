@@ -1,5 +1,6 @@
 package com.pranay.bleapplication
 
+
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -70,6 +71,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+//import com.pranay.bleapplication.ui.DeviceDetail
 
 @Suppress("unused")
 class BluetoothViewModel : ViewModel(){
@@ -144,12 +146,24 @@ class MainActivity : ComponentActivity() {
                         devices.value?.let { it1 ->
                             ScanResultsScreen(navController = navController, devices = it1, onConnect = {device ->
                                 connectToDevice(device)
+                                navController.navigate(Screen.DeviceDetail.route + "/${device.address}")
                             })
+                        }
+                    }
+                    composable(Screen.DeviceDetail.route + "/{deviceId}"){ backStackEntry ->
+                        val deviceId = backStackEntry.arguments?.getString("deviceId")
+                        val device = _devices.value?.find { it.address == deviceId }
+                        device?.let{
+                            DeviceDetailScreen(device = it, navController = navController)
+                        } ?: run{
+                            Text(text = "Device not found")
                         }
                     }
                 }
             }
         }
+
+
 
         // Initialize Bluetooth adapter and scanner
         val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
@@ -762,4 +776,5 @@ class MainActivity : ComponentActivity() {
     sealed class Screen(val route: String) {
         data object Home : Screen("home")
         data object ScanResults : Screen("scan_results")
+        data object DeviceDetail: Screen("device_detail")
     }}
