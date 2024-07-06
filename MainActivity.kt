@@ -606,7 +606,9 @@ class MainActivity : ComponentActivity() {
     private fun connectToDevice(device: Device){
         if(ActivityCompat.checkSelfPermission(
                 this,
-                Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ){
+                Manifest.permission.BLUETOOTH_CONNECT
+        ) != PackageManager.PERMISSION_GRANTED
+            ){
             // Request necessary permissions from the user
             ActivityCompat.requestPermissions(
                 this,
