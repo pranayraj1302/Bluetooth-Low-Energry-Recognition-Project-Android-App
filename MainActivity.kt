@@ -389,6 +389,10 @@ class MainActivity : ComponentActivity() {
         }, SCAN_PERIOD)
     }
 
+    private fun updateUI(strings: List<String>) {
+
+    }
+
     private fun stopScanning() {
         if (isScanning) {
             isScanning = false
@@ -586,8 +590,13 @@ class MainActivity : ComponentActivity() {
             Button(
                 onClick = { onConnect(device) },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (device.connected) Color.Green else MaterialTheme.colorScheme.secondary
-                )
+                    containerColor = if (device.connected) Color.Green else Color.Yellow,
+                    contentColor = Color.Black // Text Color
+                ),
+                modifier = Modifier
+                    .padding(8.dp)
+                    .width(IntrinsicSize.Max)
+
             ) {
                 Text(if (device.connected) "Connected" else "Connect")
             }
@@ -595,7 +604,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun connectToDevice(device: Device){
-        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ){
+        if(ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ){
             // Request necessary permissions from the user
             ActivityCompat.requestPermissions(
                 this,
@@ -621,6 +632,8 @@ class MainActivity : ComponentActivity() {
                         runOnUiThread{
                             device.connected = false
                             _devices.postValue(_devices.value)
+                            //Navigate to device details screen
+
                         }
                     }
                 }
@@ -640,6 +653,7 @@ class MainActivity : ComponentActivity() {
                             runOnUiThread {
                                 device.connected = true
                                 _devices.postValue(_devices.value)
+
                             }
                         }
                         BluetoothProfile.STATE_DISCONNECTED ->{
@@ -662,74 +676,88 @@ class MainActivity : ComponentActivity() {
                 }
             })
         }
-
-
-        //bluetoothDevice?.connectGatt(this, false, gattCallback)
-        //} catch (e: SecurityException){
-        //Log.e(TAG, "SecurityException: Permission not granted", e)
-        //}
     }
 
-    fun onRequestPermissionResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray){
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if(requestCode == REQUEST_BLUETOOTH_CONNECT && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED){
-            // Handle permission granted
-            Log.d(TAG, "Bluetooth connect permission granted")
-            // Proceed with connecting to the device or any other action
-        } else {
-            Log.w(TAG, "Bluetooth connect permission not granted")
-        }
-    }
-
-    private val gattCallback = object : BluetoothGattCallback(){
-        override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
-            super.onConnectionStateChange(gatt, status, newState)
-            when(newState){
-                BluetoothProfile.STATE_CONNECTED -> {
-                    Log.i(TAG, "Connected to GATT server")
-                    // Check if Bluetooth connect permission is granted
-                    if(ActivityCompat.checkSelfPermission(this@MainActivity, Manifest.permission.BLUETOOTH_CONNECT)!= PackageManager.PERMISSION_GRANTED){
-                        Log.e(TAG, "Bluetooth connect permission not granted")
-                        return
-                    }
-                    gatt?.discoverServices()
-                }
-                BluetoothProfile.STATE_DISCONNECTED -> {
-                    Log.i(TAG, "Disconnected from GATT server")
-                }
+    @Composable
+    fun DeviceDetailScreen(device: Device, navController: NavController){
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = "Device Details", style = MaterialTheme.typography.headlineMedium)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = "Name: ${device.name ?: "Unknown"}")
+            Text(text = "Address: ${device.address ?: "Unknown"}")
+            Spacer(modifier = Modifier.height(32.dp))
+            Button(
+                onClick = { navController.popBackStack() }, // Navigate back to previous screen
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text("Back")
             }
         }
 
-        override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
-            super.onServicesDiscovered(gatt, status)
-            if(status == BluetoothGatt.GATT_SUCCESS){
-                Log.i(TAG, "Services Discovered")
+        fun onRequestPermissionResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray){
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+            if(requestCode == REQUEST_BLUETOOTH_CONNECT && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                // Handle permission granted
+                Log.d(TAG, "Bluetooth connect permission granted")
+                // Proceed with connecting to the device or any other action
             } else {
-                Log.w(TAG, "OnServicesDiscovered received: $status")
+                Log.w(TAG, "Bluetooth connect permission not granted")
             }
         }
-    }
 
+        val gattCallback = object : BluetoothGattCallback(){
+            override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
+                super.onConnectionStateChange(gatt, status, newState)
+                when(newState){
+                    BluetoothProfile.STATE_CONNECTED -> {
+                        Log.i(TAG, "Connected to GATT server")
+                        // Check if Bluetooth connect permission is granted
+                        if(ActivityCompat.checkSelfPermission(this@MainActivity, Manifest.permission.BLUETOOTH_CONNECT)!= PackageManager.PERMISSION_GRANTED){
+                            Log.e(TAG, "Bluetooth connect permission not granted")
+                            return
+                        }
+                        gatt?.discoverServices()
+                    }
+                    BluetoothProfile.STATE_DISCONNECTED -> {
+                        Log.i(TAG, "Disconnected from GATT server")
+                    }
+                }
+            }
 
-
-    private fun updateUI(devices: List<String>) {
-        val coolzenDevices = devices.filter { device ->
-            val (name, _) = device.split(" - ")
-            name == "Coolzen"
-        }.map { device ->
-            val (name, address) = device.split(" - ")
-            Device(name, address)
+            override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
+                super.onServicesDiscovered(gatt, status)
+                if(status == BluetoothGatt.GATT_SUCCESS){
+                    Log.i(TAG, "Services Discovered")
+                } else {
+                    Log.w(TAG, "OnServicesDiscovered received: $status")
+                }
+            }
         }
 
-        Log.d(TAG, "Coolzen Devices found: $coolzenDevices")
 
-        _devices.value = coolzenDevices
+
+        fun updateUI(devices: List<String>) {
+            val coolzenDevices = devices.filter { device ->
+                val (name, _) = device.split(" - ")
+                name == "Coolzen"
+            }.map { device ->
+                val (name, address) = device.split(" - ")
+                Device(name, address)
+            }
+
+            Log.d(TAG, "Coolzen Devices found: $coolzenDevices")
+
+            _devices.value = coolzenDevices
+        }
     }
-}
 
 
 
-sealed class Screen(val route: String) {
-    data object Home : Screen("home")
-    data object ScanResults : Screen("scan_results")
-}
+    sealed class Screen(val route: String) {
+        data object Home : Screen("home")
+        data object ScanResults : Screen("scan_results")
+    }}
