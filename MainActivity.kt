@@ -1,8 +1,7 @@
 package com.pranay.bleapplication
 
 
-import android.Manifest
-import android.bluetooth.BluetoothAdapter
+import android.Manifest import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
@@ -42,7 +41,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -53,52 +51,47 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
+
 import com.pranay.bleapplication.ui.theme.BLEApplicationTheme
 import android.os.Parcelable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
 
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
-import kotlinx.parcelize.Parceler
-import kotlinx.parcelize.Parcelize
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
+
+import androidx.compose.foundation.layout.fillMaxWidth import androidx.compose.material3.ButtonDefaults import androidx.compose.material3.MaterialTheme import androidx.compose.ui.Alignment import androidx.compose.ui.graphics.Color import kotlinx.parcelize.Parceler import kotlinx.parcelize.Parcelize import androidx.lifecycle.LiveData import androidx.lifecycle.MutableLiveData import androidx.lifecycle.ViewModel import androidx.lifecycle.ViewModelProvider import android.app.Activity import java.util.UUID
+
+
 //import com.pranay.bleapplication.ui.DeviceDetail
 
-@Suppress("unused")
-class BluetoothViewModel : ViewModel(){
-    private val _scannedDevices = MutableLiveData<List<Device>>(emptyList())
+
+@Suppress("unused") class BluetoothViewModel : ViewModel(){ private val _scannedDevices = MutableLiveData<List<Device>>(emptyList())
     val scannedDevices: LiveData<List<Device>> = _scannedDevices
 
     fun updateScannedDevices(devices: List<Device>){
         _scannedDevices.postValue(devices)
     }
-}
-@Parcelize
-data class Device(
+} @Parcelize data class Device(
     val name: String?,
     val address: String?,
-    var connected: Boolean = false
-) : Parcelable {
-    constructor(parcel: Parcel) : this(
-        parcel.readString(),
-        parcel.readString()
+    var connected: Boolean = false,
+    var rssi: Int = 0,
+    val genericAttributeUUID: UUID? = null,
+    val genericAccessUUID: UUID? = null ) : Parcelable {
+    var batteryLevel: Int? = null //battery indicator
+    constructor(parcel: Parcel) : this( parcel.readString(), parcel.readString()
     )
 
+
+
+
     companion object : Parceler<Device> {
+
 
         override fun Device.write(parcel: Parcel, flags: Int) {
             parcel.writeString(name)
             parcel.writeString(address)
         }
+
 
         override fun create(parcel: Parcel): Device {
             return Device(parcel)
@@ -111,7 +104,8 @@ class MainActivity : ComponentActivity() {
 
     // private var devices by  mutableStateOf<List<String>>(emptyList())
     private val _devices = MutableLiveData<List<Device>>(emptyList())
-    val devices: LiveData<List<Device>> = _devices
+    private val devices: LiveData<List<Device>> = _devices
+
 
     companion object {
         private const val REQUEST_LOCATION_PERMISSION = 1
@@ -122,6 +116,7 @@ class MainActivity : ComponentActivity() {
         private const val SCAN_PERIOD: Long = 10000 // 10 seconds
     }
 
+
     private lateinit var locationPermissionLauncher: ActivityResultLauncher<String>
     private lateinit var bluetoothPermissionLauncher: ActivityResultLauncher<Array<String>>
     private var bluetoothAdapter: BluetoothAdapter? = null
@@ -131,9 +126,11 @@ class MainActivity : ComponentActivity() {
     private var isScanning = false
     private lateinit var navController: NavController
 
+
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
 
         setContent {
             BLEApplicationTheme {
@@ -170,6 +167,7 @@ class MainActivity : ComponentActivity() {
         bluetoothAdapter = bluetoothManager.adapter
         bluetoothAdapter?.bluetoothLeScanner.also { bluetoothLeScanner = it }
 
+
         locationPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { isGranted ->
@@ -179,6 +177,7 @@ class MainActivity : ComponentActivity() {
                 displayRationale()
             }
         }
+
 
         bluetoothPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
@@ -191,9 +190,11 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+
         // Check for location and Bluetooth permissions on app launch
         checkPermissions()
     }
+
 
     @RequiresApi(Build.VERSION_CODES.S)
     private fun checkPermissions() {
@@ -206,6 +207,7 @@ class MainActivity : ComponentActivity() {
             checkBluetoothPermissions()
         }
     }
+
 
     @RequiresApi(Build.VERSION_CODES.S)
     private fun checkBluetoothPermissions() {
@@ -224,6 +226,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
     @RequiresApi(Build.VERSION_CODES.S)
     private fun checkBluetoothEnabled() {
         Log.d(TAG, "Checking if Bluetooth is enabled")
@@ -233,6 +236,7 @@ class MainActivity : ComponentActivity() {
             initBLEModule()
         }
     }
+
 
     @RequiresApi(Build.VERSION_CODES.S)
     private fun requestBluetoothEnable() {
@@ -248,6 +252,7 @@ class MainActivity : ComponentActivity() {
         }
         startActivityForResult(enableBtIntent, REQUEST_ENABLE_BLUETOOTH)
     }
+
 
     @RequiresApi(Build.VERSION_CODES.S)
     private fun displayRationale() {
@@ -267,6 +272,7 @@ class MainActivity : ComponentActivity() {
             promptSettingsPage()
         }
     }
+
 
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onRequestPermissionsResult(
@@ -303,6 +309,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
@@ -316,6 +323,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
     private fun isLocationPermissionEnabled(): Boolean {
         return ContextCompat.checkSelfPermission(
             this,
@@ -323,11 +331,13 @@ class MainActivity : ComponentActivity() {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
+
     private fun isLocationEnabled(): Boolean {
         val locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
         return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
                 locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
     }
+
 
     private fun promptEnableLocation() {
         AlertDialog.Builder(this)
@@ -341,6 +351,7 @@ class MainActivity : ComponentActivity() {
             }
             .show()
     }
+
 
     private fun isBluetoothPermissionEnabled(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -357,19 +368,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
     private fun isAboveMarshmallow(): Boolean {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
     }
 
+
     private fun isBluetoothEnabled(): Boolean {
         return bluetoothAdapter?.isEnabled ?: false
     }
+
 
     private fun initBLEModule() {
         Log.d(TAG, "Initializing BLE module")
         Toast.makeText(this, "BLE Module Initialized", Toast.LENGTH_SHORT).show()
         startScanning()
     }
+
 
     private fun startScanning() {
         Log.d(TAG, "Starting the scan")
@@ -383,19 +398,23 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+
         isScanning = true
         scannedDevices.clear()
         discoverableDevices.clear()
+
 
         // Start BLE scan
         bluetoothLeScanner?.startScan(leScanCallback)
         Log.i(TAG, "Started Scanning for BLE Devices")
         Toast.makeText(this, "Started Scanning for BLE Devices", Toast.LENGTH_SHORT).show()
 
+
         // Start classic Bluetooth discovery
         bluetoothAdapter?.startDiscovery()
         Log.i(TAG, "Started Discovery for Classic Bluetooth Devices")
         registerReceiver(receiver, IntentFilter(BluetoothDevice.ACTION_FOUND))
+
 
         Handler(Looper.getMainLooper()).postDelayed({
             stopScanning()
@@ -403,9 +422,11 @@ class MainActivity : ComponentActivity() {
         }, SCAN_PERIOD)
     }
 
+
     private fun updateUI(strings: List<String>) {
 
     }
+
 
     private fun stopScanning() {
         if (isScanning) {
@@ -426,29 +447,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /*private fun updateUI(devices: List<String>) {
-        runOnUiThread {
-            val combinedDevices = ArrayList<Parcelable>().apply {
-                addAll(scannedDevices.map { deviceString ->
-                    val (name, address) = deviceString.split(" - ")
-                    Device(name, address)
-                })
-                addAll(discoverableDevices.map { deviceString ->
-                    val (name, address) = deviceString.split(" - ")
-                    Device(name, address)
-                })
-            }
-            navController.navigate(Screen.ScanResults.route) {
-                putParcelableArrayList("devices", combinedDevices)
-            }
-            Log.d(TAG, "Updated UI with devices: $devices")
-        }
-    }*/
-
-    private fun putParcelableArrayList(s: String, combinedDevices: ArrayList<Parcelable>) {
-
-    }
-
     private fun promptSettingsPage() {
         AlertDialog.Builder(this)
             .setMessage(getString(R.string.prompt_settings_page))
@@ -464,13 +462,17 @@ class MainActivity : ComponentActivity() {
             .show()
     }
 
+
     private val leScanCallback = object : ScanCallback() {
         @RequiresApi(Build.VERSION_CODES.O)
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
             super.onScanResult(callbackType, result)
             val device = result?.device
-            val deviceInfo = "${device?.name?:"Unknown Device"} - ${device?.address?: "00:01:02:03:04:05"}"
+            val deviceInfo = "${device?.name?:"Unknown Device"} - ${device?.address?: "00:01:02:03:04:05"} - RSSI: ${result?.rssi}"
+            val genericAttributeUUID = UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb")
+            val genericAccessUUID = UUID.fromString("00001800-0000-1000-8000-00805f9b34fb")
             Log.d(TAG, "BLE Device found: $deviceInfo")
+
 
             if (ActivityCompat.checkSelfPermission(
                     this@MainActivity,
@@ -482,41 +484,46 @@ class MainActivity : ComponentActivity() {
                 return
             }
 
+
             //val deviceInfo = "${device?.name ?: "Unknown Device"} - ${device?.address ?: "00:01:02:03:04:05"}"
             Log.d(TAG, "BLE Device found: $deviceInfo")
+
 
             // update LiveData with new device
             val currentDevices = _devices.value?.toMutableList()?: mutableListOf()
             if(!currentDevices.any{it.address == device?.address}){
-                currentDevices.add(Device(device?.name, device?.address))
+                currentDevices.add(Device(device?.name, device?.address, rssi = result?.rssi ?: 0))
                 _devices.postValue(currentDevices)
             }
+
 
             if (!scannedDevices.contains(deviceInfo)) {
                 scannedDevices.add(deviceInfo)
                 updateUI(scannedDevices.toList())
                 Log.i(TAG, "Added BLE Device: $deviceInfo")
 
+
                 result?.let {
                     val logMessage = """
-                            onScanResult() -  
-                        addressType=${it.scanRecord?.deviceName}, 
-                        address=${it.device.address}, 
-                        primaryPhy=${it.primaryPhy}, 
-                        secondaryPhy=${it.secondaryPhy}, 
-                        advertisingSid=${it.advertisingSid}, 
-                        txPower=${it.txPower}, 
-                        rssi=${it.rssi}, 
-                        periodicAdvInt=${it.periodicAdvertisingInterval}, 
-                        originalAddress=${it.device.address}, 
-                        type=${it.scanRecord?.advertiseFlags}, 
-                        channel=${it.scanRecord?.txPowerLevel}
-                        """.trimIndent()
+                       onScanResult() - 
+                   addressType=${it.scanRecord?.deviceName},
+                   address=${it.device.address},
+                   primaryPhy=${it.primaryPhy},
+                   secondaryPhy=${it.secondaryPhy},
+                   advertisingSid=${it.advertisingSid},
+                   txPower=${it.txPower},
+                   rssi=${it.rssi},
+                   periodicAdvInt=${it.periodicAdvertisingInterval},
+                   originalAddress=${it.device.address},
+                   type=${it.scanRecord?.advertiseFlags},
+                   channel=${it.scanRecord?.txPowerLevel}
+                   """.trimIndent()
                     Log.d(TAG, logMessage)
                 }
             }
         }
     }
+
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -532,32 +539,48 @@ class MainActivity : ComponentActivity() {
                     Log.w(TAG, "Bluetooth connect permission not granted")
                     return
                 }
-                val deviceInfo = "${device?.name ?: "Unknown Device"} - ${device?.address ?: "00:01:02:03:04:05"}"
+                val deviceInfo = "${device?.name ?: "Unknown Device"} - ${device?.address ?: "00:01:02:03:04:05"} - RSSI: ${device?.bluetoothClass?.deviceClass ?: 0}"
+                val genericAttributeUUID = UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb") // Generic Attribute UUID
+                val genericAccessUUID = UUID.fromString("00001800-0000-1000-8000-00805f9b34fb") // Generic Access UUID
                 Log.d(TAG, "Classic Bluetooth device found: $deviceInfo")
+
 
                 val viewModel = ViewModelProvider(this@MainActivity).get(BluetoothViewModel::class.java)
                 viewModel.updateScannedDevices(listOf(Device(device?.name, device?.address)))
 
+
                 // Update LiveData with new device
                 val currentDevices = _devices.value?.toMutableList() ?: mutableListOf()
                 if (!currentDevices.any { it.address == device?.address }) {
-                    currentDevices.add(Device(device?.name, device?.address))
+                    currentDevices.add(Device(device?.name, device?.address, rssi = device?.bluetoothClass?.deviceClass?: 0))
                     _devices.postValue(currentDevices)
                     /*if (!discoverableDevices.contains(deviceInfo)) {
                         discoverableDevices.add(deviceInfo)
                         updateUI(discoverableDevices + scannedDevices)
                         Log.i(TAG, "Added Classic Bluetooth Device: $deviceInfo")*/
 
+
                 }
             }
         }
     }
 
+
     @Composable
     fun Greeting(name: String, navController: NavController) {
         Surface(modifier = Modifier.fillMaxSize()) {
-            Column {
-                Text(text = "Hello $name welcome to the app", modifier = Modifier.padding(8.dp))
+            Column (
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Top,
+                horizontalAlignment = Alignment.Start
+            ){
+                Text(
+                    text = "Hello $name welcome to the app",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = { navController.navigate(Screen.ScanResults.route) },
                     modifier = Modifier.padding(8.dp)
@@ -567,6 +590,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
 
     @Composable
     fun ScanResultsScreen(
@@ -588,18 +612,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
     @Composable
-    fun DeviceItem(device: Device, onConnect: (Device)-> Unit){
+    fun DeviceItem(device: Device, onConnect: (Device) -> Unit) {
+        val rssiPercentage = (device.rssi / -100.0) * 100
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-                .clickable { onConnect(device) },
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
+
         ){
             Column(modifier = Modifier.padding(8.dp)) {
                 Text(text = device.name ?: "Unknown Device")
                 Text(text = device.address ?: "Unknown Address")
+                Text(text = "RSSI: ${device.rssi}")
+                Text(text = "Generic Attribute UUID: ${device.genericAttributeUUID}")
+                Text(text = "Generic Access UUID: ${device.genericAccessUUID}")
             }
             Button(
                 onClick = { onConnect(device) },
@@ -610,19 +639,22 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier
                     .padding(8.dp)
                     .width(IntrinsicSize.Max)
-
             ) {
                 Text(if (device.connected) "Connected" else "Connect")
             }
         }
     }
 
+
+    private val connectedDeviceCallbacks = mutableMapOf<String, BluetoothGattCallback>()
+
+
     private fun connectToDevice(device: Device){
         if(ActivityCompat.checkSelfPermission(
                 this,
                 Manifest.permission.BLUETOOTH_CONNECT
-        ) != PackageManager.PERMISSION_GRANTED
-            ){
+            ) != PackageManager.PERMISSION_GRANTED
+        ){
             // Request necessary permissions from the user
             ActivityCompat.requestPermissions(
                 this,
@@ -632,10 +664,52 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+
         val bluetoothDevice = bluetoothAdapter?.getRemoteDevice(device.address)
+
+
+        val gattCallback = object : BluetoothGattCallback(){
+            override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
+                super.onConnectionStateChange(gatt, status, newState)
+                when(newState){
+                    BluetoothProfile.STATE_CONNECTED -> {
+                        Log.i(TAG, "Connected to GATT Server")
+
+                        runOnUiThread {
+                            device.connected = true
+                            _devices.postValue(_devices.value)
+                        }
+                    }
+                    BluetoothProfile.STATE_DISCONNECTED ->{
+                        Log.i(TAG,"Disconnected from GATT Server")
+                        runOnUiThread {
+                            device.connected = false
+                            _devices.postValue(_devices.value)
+                            if(ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED){
+                                gatt?.close()
+                            } else {
+                                Log.w(TAG, "BLUETOOTH_CONNECT permission denied")
+                            }
+                        }
+                    }
+                }
+            }
+            override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
+                super.onServicesDiscovered(gatt, status)
+                if(status == BluetoothGatt.GATT_SUCCESS){
+                    Log.i(TAG, "Services Discovered")
+                } else{
+                    Log.w(TAG, "onServiceDiscovered received: $status")
+                }
+            }
+        }
+
 
         if(device.connected){
             // Disconnect from the device
+            connectedDeviceCallbacks.remove(device.address)?.let { callback ->
+                bluetoothDevice?.connectGatt(this, false, callback)?.disconnect()
+            }
             bluetoothDevice?.connectGatt(this, false, object : BluetoothGattCallback(){
                 override fun onConnectionStateChange(
                     gatt: BluetoothGatt?,
@@ -649,6 +723,7 @@ class MainActivity : ComponentActivity() {
                             device.connected = false
                             _devices.postValue(_devices.value)
                             //Navigate to device details screen
+
 
                         }
                     }
@@ -670,6 +745,7 @@ class MainActivity : ComponentActivity() {
                                 device.connected = true
                                 _devices.postValue(_devices.value)
 
+
                             }
                         }
                         BluetoothProfile.STATE_DISCONNECTED ->{
@@ -682,25 +758,35 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
-                    super.onServicesDiscovered(gatt, status)
-                    if(status == BluetoothGatt.GATT_SUCCESS){
-                        Log.i(TAG, "Services Discovered")
-                    } else{
-                        Log.w(TAG, "onServiceDiscovered received: $status")
-                    }
-                }
             })
         }
     }
 
+
     @Composable
     fun DeviceDetailScreen(device: Device, navController: NavController){
         Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.Start
         ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.Top
+            ){
+                Button(
+                    onClick = {
+                        disconnectDevice(device)
+                        navController.popBackStack() // Navigate back to the previous screen
+                    },
+                    modifier = Modifier.padding(8.dp)
+                ) {
+                    Text(text = "Disconnect")
+                }
+            }
             Text(text = "Device Details", style = MaterialTheme.typography.headlineMedium)
             Spacer(modifier = Modifier.height(16.dp))
             Text(text = "Name: ${device.name ?: "Unknown"}")
@@ -714,6 +800,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+
         fun onRequestPermissionResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray){
             super.onRequestPermissionsResult(requestCode, permissions, grantResults)
             if(requestCode == REQUEST_BLUETOOTH_CONNECT && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED){
@@ -724,6 +811,7 @@ class MainActivity : ComponentActivity() {
                 Log.w(TAG, "Bluetooth connect permission not granted")
             }
         }
+
 
         val gattCallback = object : BluetoothGattCallback(){
             override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
@@ -744,6 +832,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+
             override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
                 super.onServicesDiscovered(gatt, status)
                 if(status == BluetoothGatt.GATT_SUCCESS){
@@ -755,7 +844,6 @@ class MainActivity : ComponentActivity() {
         }
 
 
-
         fun updateUI(devices: List<String>) {
             val coolzenDevices = devices.filter { device ->
                 val (name, _) = device.split(" - ")
@@ -765,16 +853,70 @@ class MainActivity : ComponentActivity() {
                 Device(name, address)
             }
 
+
             Log.d(TAG, "Coolzen Devices found: $coolzenDevices")
+
 
             _devices.value = coolzenDevices
         }
     }
 
 
+    private val REQUEST_PERMISSION_CODE = 1
 
-    sealed class Screen(val route: String) {
-        data object Home : Screen("home")
-        data object ScanResults : Screen("scan_results")
-        data object DeviceDetail: Screen("device_detail")
-    }}
+
+    private fun disconnectDevice(device: Device) {
+        if (device.connected) {
+            // Check if the app has BLUETOOTH_CONNECT permission
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                val bluetoothDevice = bluetoothAdapter?.getRemoteDevice(device.address)
+                if (bluetoothDevice != null) {
+                    val gattCallback = connectedDeviceCallbacks[device.address]
+                    if (gattCallback != null) {
+                        val gatt = bluetoothDevice.connectGatt(this, false, gattCallback)
+                        if (gatt != null) {
+                            gatt.disconnect()
+                            gatt.close()
+                        }
+                        // Remove the callback from the map
+                        connectedDeviceCallbacks.remove(device.address)
+                    } else {
+                        Log.w(TAG, "GattCallback is null for device address: ${device.address}")
+                    }
+                } else {
+                    Log.w(TAG, "BluetoothDevice is null for device address: ${device.address}")
+                }
+                // Update the device connection status
+                device.connected = false
+                _devices.postValue(_devices.value)
+            } else {
+                // Request BLUETOOTH_CONNECT permission
+                requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT), REQUEST_PERMISSION_CODE)
+            }
+        } else {
+            Log.w(TAG, "Device is not connected")
+        }
+    }
+}
+
+
+private fun requestPermission(context: Context, permission: String, requestCode: Int){
+    if(ContextCompat.checkSelfPermission( context, permission )!= PackageManager.PERMISSION_GRANTED){
+        ActivityCompat.requestPermissions((context as Activity), arrayOf(permission), requestCode)
+    }
+}
+
+
+
+
+
+
+sealed class Screen(val route: String) {
+    data object Home : Screen("home")
+    data object ScanResults : Screen("scan_results")
+    data object DeviceDetail: Screen("device_detail")
+}
