@@ -58,7 +58,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 
 
-import androidx.compose.foundation.layout.fillMaxWidth import androidx.compose.material3.ButtonDefaults import androidx.compose.material3.MaterialTheme import androidx.compose.ui.Alignment import androidx.compose.ui.graphics.Color import kotlinx.parcelize.Parceler import kotlinx.parcelize.Parcelize import androidx.lifecycle.LiveData import androidx.lifecycle.MutableLiveData import androidx.lifecycle.ViewModel import androidx.lifecycle.ViewModelProvider import android.app.Activity import java.util.UUID
+import androidx.compose.foundation.layout.fillMaxWidth import androidx.compose.material3.ButtonDefaults import androidx.compose.material3.MaterialTheme import androidx.compose.ui.Alignment import androidx.compose.ui.graphics.Color import kotlinx.parcelize.Parceler import kotlinx.parcelize.Parcelize import androidx.lifecycle.LiveData import androidx.lifecycle.MutableLiveData import androidx.lifecycle.ViewModel import androidx.lifecycle.ViewModelProvider import android.app.Activity
+import android.bluetooth.BluetoothGattCharacteristic
+import java.util.UUID
 
 
 //import com.pranay.bleapplication.ui.DeviceDetail
@@ -468,7 +470,7 @@ class MainActivity : ComponentActivity() {
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
             super.onScanResult(callbackType, result)
             val device = result?.device
-            val deviceInfo = "${device?.name?:"Unknown Device"} - ${device?.address?: "00:01:02:03:04:05"} - RSSI: ${result?.rssi}"
+            val deviceInfo = "${device?.name?:"Unknown Device"} - ${device?.address?: "00:01:02:03:04:05"} - RSSI: ${result?.rssi} dBm"
             val genericAttributeUUID = UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb")
             val genericAccessUUID = UUID.fromString("00001800-0000-1000-8000-00805f9b34fb")
             Log.d(TAG, "BLE Device found: $deviceInfo")
@@ -629,6 +631,7 @@ class MainActivity : ComponentActivity() {
                 Text(text = "RSSI: ${device.rssi}")
                 Text(text = "Generic Attribute UUID: ${device.genericAttributeUUID}")
                 Text(text = "Generic Access UUID: ${device.genericAccessUUID}")
+                Text(text = "Battery Level: ${device.batteryLevel?.let { "$it%" } ?: " "}")
             }
             Button(
                 onClick = { onConnect(device) },
@@ -698,8 +701,60 @@ class MainActivity : ComponentActivity() {
                 super.onServicesDiscovered(gatt, status)
                 if(status == BluetoothGatt.GATT_SUCCESS){
                     Log.i(TAG, "Services Discovered")
-                } else{
+
+                    // Define the UUIDs for the battery service and characteristic
+                    val batteryServiceUUID = UUID.fromString("0000180f-0000-1000-8000-00805f9b34fb")
+                    val batteryLevelUUID = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
+
+                    // Get the battery service and characteristic
+                    val batteryService = gatt?.getService(batteryServiceUUID)
+                    val batteryLevelCharacteristic = batteryService?.getCharacteristic(batteryLevelUUID)
+                    if (batteryLevelCharacteristic != null) {
+                        if (ContextCompat.checkSelfPermission(
+                            this@MainActivity,
+                            Manifest.permission.BLUETOOTH_CONNECT
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                            try {
+                                gatt?.readCharacteristic(batteryLevelCharacteristic)
+                            } catch (e: SecurityException){
+                                Log.e(TAG, "Error reading charecteristic: $e")
+                            }
+                        } else {
+                            Log.w(TAG, "BLUETOOTH_CONNECT permission not granted")
+
+                            requestPermission(
+                                this@MainActivity,
+                                Manifest.permission.BLUETOOTH_CONNECT,
+                                REQUEST_PERMISSION_CODE
+                            )
+                        }
+                    }
+                } else {
                     Log.w(TAG, "onServiceDiscovered received: $status")
+                }
+            }
+
+            override fun onCharacteristicRead(
+                gatt: BluetoothGatt,
+                characteristic: BluetoothGattCharacteristic,
+                value: ByteArray,
+                status: Int
+            ) {
+                super.onCharacteristicRead(gatt, characteristic, value, status)
+                if(status == BluetoothGatt.GATT_SUCCESS){
+                    val batteryLevelUUID = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
+                    if (characteristic?.uuid == batteryLevelUUID){
+                        val batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0)
+                        Log.i(TAG, "Battery level: $batteryLevel %")
+                        // Update the device's battery level
+                        val device = _devices.value?.find { it.address == gatt?.device?.address }
+                        device?.batteryLevel = batteryLevel
+                        _devices.postValue(_devices.value)
+                    }
+                    else {
+                        Log.w(TAG, "OnCharacteristicRead received: $status")
+                    }
                 }
             }
         }
