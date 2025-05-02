@@ -1,31 +1,22 @@
-**Getting Started**
+# BLE Device Connection App
 
-**1. Build the Project**
-Ensure that your Android device supports BLE and is running Android 4.3 (API level 18) or higher.
-Connect your Android device to your computer and enable USB debugging.
+This project is an Android app developed using Kotlin that allows users to connect to Bluetooth Low Energy (BLE) devices. The app provides an interface to scan, connect, and transfer data between the Android device and a selected BLE device.
 
-**2. Run the App**
-Launch the app on your Android device.
-Grant the necessary permissions when prompted.
+**Features:**
+BLE Device Scanning: Scan for nearby BLE devices and display them in a list.
 
-**3. Connect to a BLE Device**
-Use the scan feature to discover nearby BLE devices.
-Select a device from the list to initiate a connection.
+Device Connection: Select a device from the list to initiate a connection.
 
-**4. Transfer Data**
-Utilize the provided interface to read from or write data to the connected BLE device.
-Dependencies
+Data Transfer: Read and write data from and to the connected BLE device using the provided interface.
 
-This project utilizes the following dependencies:
+**Prerequisites:**
+Android device with BLE support (Android 4.3 or higher).
 
-Kotlin: For Android app development.
+USB debugging enabled on the Android device.
 
-AndroidX libraries: For modern Android development components.
-BLE-related libraries: If applicable, include libraries for handling BLE operations.
-Usage
+**Setup:**
+Clone the repository and open it in Android Studio.
 
-Device Connection
-Scan for available BLE devices and connect by selecting a device from the list.
+Connect your Android device and enable USB debugging.
 
-Data Transfer
-Use the provided functions to read from and write to the connected device, ensuring data is correctly formatted as per BLE specifications.
+Grant necessary permissions on the device when prompted (location, Bluetooth).
